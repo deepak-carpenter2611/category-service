@@ -7,7 +7,6 @@ export default function Sidebar() {
   const [activeIndex, setActiveIndex] = useState(null);
   const pathname = usePathname();
 
-  // Toggle menu visibility
   const toggleMenu = (index) => {
     setActiveIndex(activeIndex === index ? null : index);
   };
@@ -33,16 +32,6 @@ export default function Sidebar() {
 
   return (
     <aside className="app-sidebar sticky" id="sidebar">
-      <div className="main-sidebar-header">
-        <a href="index.html" className="header-logo">
-          <img
-            src="/images/brand-logos/logo.png"
-            className=""
-            alt="logo"
-            style={{ height: "24px" }}
-          />
-        </a>
-      </div>
       <div className="main-sidebar" id="sidebar-scroll">
         <nav className="main-menu-container nav nav-pills flex-column sub-open">
           <ul className="main-menu">

@@ -14,46 +14,56 @@ import { fetchCategories } from "@/store/slice/categorySlice";
 const AddService = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-  const { id, categoryId } = useParams();
+  const params = useParams();
+  const id = params.id;
+  const categoryId = params.categoryId || params.id;
+
+  console.log("id============", id);
+  console.log("categoryId============", categoryId);
 
   const { categories } = useSelector((state) => state.category);
 
   const [formData, setFormData] = useState({
     name: "",
+    type: "Normal",
     categoryId: categoryId || "",
-    servicePriceOptions: [{ price: "", type: "Hourly", duration: "1 hour" }],
+    ServicePriceOptions: [{ price: "", type: "Hourly", duration: "" }],
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     dispatch(fetchCategories());
-    if (id && categoryId) {
+    if (id && categoryId && id !== categoryId) {
       const fetchService = async () => {
         const serviceData = await dispatch(
           fetchServiceById({ id, categoryId })
         );
-        console.log("serviceData=======", serviceData);
 
-        setFormData({
-          name: serviceData?.payload?.name || "",
-          categoryId: serviceData?.payload?.categoryId || categoryId,
-          servicePriceOptions: serviceData?.payload?.servicePriceOptions || [
-            { price: "", type: "Hourly", duration: "1 hour" },
-          ],
-        });
+        if (serviceData?.payload) {
+          setFormData({
+            name: serviceData.payload.name || "",
+            type: serviceData.payload.type || "Normal",
+            categoryId: serviceData.payload.categoryId || categoryId,
+            ServicePriceOptions: serviceData.payload.ServicePriceOptions?.map(
+              (option) => ({
+                price: option.price || "",
+                type: option.type || "Hourly",
+                duration: option.duration || "",
+              })
+            ) || [{ price: "", type: "Hourly", duration: "1 hour" }],
+          });
+        }
       };
       fetchService();
-    } else {
-      setFormData({
-        ...formData,
-        categoryId: categoryId,
-      });
     }
   }, [id, categoryId, dispatch]);
 
   const validationSchema = Yup.object().shape({
     name: Yup.string().required("Service name is required"),
-    servicePriceOptions: Yup.array().of(
+    type: Yup.string()
+      .oneOf(["VIP", "Normal"])
+      .required("Service type is required"),
+    ServicePriceOptions: Yup.array().of(
       Yup.object().shape({
         price: Yup.number()
           .required("Price is required")
@@ -64,28 +74,36 @@ const AddService = () => {
     ),
   });
 
-  const handleChange = (e, index) => {
+  const handleChange = (e, index = null) => {
     const { name, value } = e.target;
-    const updatedPriceOptions = [...formData.servicePriceOptions];
-    updatedPriceOptions[index][name] = value;
-    setFormData({ ...formData, servicePriceOptions: updatedPriceOptions });
+
+    if (index !== null) {
+      const updatedPriceOptions = [...formData.ServicePriceOptions];
+      updatedPriceOptions[index] = {
+        ...updatedPriceOptions[index],
+        [name]: value,
+      };
+      setFormData({ ...formData, ServicePriceOptions: updatedPriceOptions });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleAddPriceOption = () => {
     setFormData({
       ...formData,
-      servicePriceOptions: [
-        ...formData.servicePriceOptions,
+      ServicePriceOptions: [
+        ...formData.ServicePriceOptions,
         { price: "", type: "Hourly", duration: "1 hour" },
       ],
     });
   };
 
   const handleRemovePriceOption = (index) => {
-    const updatedPriceOptions = formData.servicePriceOptions.filter(
+    const updatedPriceOptions = formData.ServicePriceOptions.filter(
       (_, i) => i !== index
     );
-    setFormData({ ...formData, servicePriceOptions: updatedPriceOptions });
+    setFormData({ ...formData, ServicePriceOptions: updatedPriceOptions });
   };
 
   const handleSubmit = async (e) => {
@@ -94,17 +112,29 @@ const AddService = () => {
       await validationSchema.validate(formData, { abortEarly: false });
       setErrors({});
 
-      if (id && categoryId) {
+      const payload = {
+        ...formData,
+        priceOptions: formData.ServicePriceOptions.map((option) => ({
+          duration: option.duration,
+          price: Number(option.price), // Convert price to number
+          type: option.type,
+        })),
+      };
+
+      console.log("id && categoryId", id);
+      console.log("id && categoryId", categoryId);
+
+      if (id && categoryId && id !== categoryId) {
         await dispatch(
-          updateService({ serviceData: formData, id, categoryId })
+          updateService({ serviceData: payload, serviceId: id, categoryId })
         ).unwrap();
       } else {
         await dispatch(
-          addService({ serviceData: formData, categoryId })
+          addService({ serviceData: payload, categoryId })
         ).unwrap();
       }
 
-      router.push(`/service/${categoryId}`); // Redirect to the category's service list
+      router.push(`/service`);
     } catch (validationErrors) {
       const newErrors = {};
       validationErrors?.inner?.forEach((error) => {
@@ -114,7 +144,6 @@ const AddService = () => {
     }
   };
 
-  // Get the category name based on the categoryId
   const selectedCategory = categories.find(
     (cat) => cat.id === formData.categoryId
   );
@@ -123,30 +152,50 @@ const AddService = () => {
     <div className="container mt-2">
       <div className="card p-4 addEdit-page-card">
         <span className="sm-header add-edit-page-title">
-          {id ? "Edit Service" : "Create Service"}
+          {id && categoryId && id !== categoryId
+            ? "Edit Service"
+            : "Create Service"}
         </span>
         <hr style={{ color: "#E7E7E7" }} />
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label className="form-label addEdit-form-label">
-              Service Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              className="form-control addEdit-form-input-field"
-              placeholder="Enter Service Name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-            />
-            {errors.name && (
-              <small className="text-danger">{errors.name}</small>
-            )}
+            <div className="me-3" style={{ flex: 1 }}>
+              <label className="form-label addEdit-form-label">
+                Service Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                className="form-control addEdit-form-input-field"
+                placeholder="Enter Service Name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+              />
+              {errors.name && (
+                <small className="text-danger">{errors.name}</small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="form-label addEdit-form-label">
+                Service Type
+              </label>
+              <select
+                name="type"
+                className="form-control"
+                value={formData.type}
+                onChange={handleChange}
+              >
+                <option value="Normal">Normal</option>
+                <option value="VIP">VIP</option>
+              </select>
+              {errors.type && (
+                <small className="text-danger">{errors.type}</small>
+              )}
+            </div>
           </div>
 
-          {/* Display the category name (but don't allow editing) */}
           <div className="mb-3">
             <label className="form-label addEdit-form-label">Category</label>
             <input
@@ -162,7 +211,7 @@ const AddService = () => {
             <label className="form-label addEdit-form-label">
               Price Options
             </label>
-            {formData.servicePriceOptions.map((option, index) => (
+            {formData.ServicePriceOptions.map((option, index) => (
               <div key={index} className="mb-3 d-flex justify-content-between">
                 <div className="d-flex flex-column">
                   <label className="form-label">Price</label>
@@ -174,9 +223,9 @@ const AddService = () => {
                     value={option.price}
                     onChange={(e) => handleChange(e, index)}
                   />
-                  {errors?.servicePriceOptions?.[index]?.price && (
+                  {errors?.ServicePriceOptions?.[index]?.price && (
                     <small className="text-danger">
-                      {errors.servicePriceOptions[index].price}
+                      {errors.ServicePriceOptions[index].price}
                     </small>
                   )}
                 </div>
@@ -192,32 +241,23 @@ const AddService = () => {
                     <option value="Weekly">Weekly</option>
                     <option value="Monthly">Monthly</option>
                   </select>
-                  {errors?.servicePriceOptions?.[index]?.type && (
+                  {errors?.ServicePriceOptions?.[index]?.type && (
                     <small className="text-danger">
-                      {errors.servicePriceOptions[index].type}
+                      {errors.ServicePriceOptions[index].type}
                     </small>
                   )}
                 </div>
                 <div className="d-flex flex-column ms-2">
                   <label className="form-label">Duration</label>
-                  <select
+                  <input
+                    type="text"
                     name="duration"
                     className="form-control"
+                    placeholder="Enter Duration"
                     value={option.duration}
                     onChange={(e) => handleChange(e, index)}
-                  >
-                    <option value="1 hour">1 hour</option>
-                    <option value="3 hours">3 hours</option>
-                    <option value="1 day">1 day</option>
-                    <option value="3 days">3 days</option>
-                    <option value="1 week">1 week</option>
-                    <option value="3 weeks">3 weeks</option>
-                  </select>
-                  {errors?.servicePriceOptions?.[index]?.duration && (
-                    <small className="text-danger">
-                      {errors.servicePriceOptions[index].duration}
-                    </small>
-                  )}
+                    required
+                  />
                 </div>
 
                 {/* Remove price option button */}

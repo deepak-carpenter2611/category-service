@@ -27,12 +27,20 @@ const ServiceList = () => {
     }
   }, [dispatch, selectedCategory]);
 
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategory) {
+      setSelectedCategory(categories[0].id);
+    }
+  }, [categories, selectedCategory]);
+
   const handleDelete = async (id) => {
     const confirmation = window.confirm(
       "Are you sure you want to delete this service?"
     );
     if (confirmation) {
-      await dispatch(deleteService(id));
+      await dispatch(
+        deleteService({ serviceId: id, categoryId: selectedCategory })
+      );
     }
   };
 
@@ -86,18 +94,6 @@ const ServiceList = () => {
                 <span className="sm-header">Services</span>
               </div>
               <div>
-                <select
-                  className="form-select"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
                 <button
                   type="submit"
                   className="btn btn-primary ms-2 font-weight-bold addEdit-form-submit-btn"
@@ -108,6 +104,19 @@ const ServiceList = () => {
                 >
                   + Add Service
                 </button>
+                <select
+                  className="form-select"
+                  style={{ marginTop: "10px" }}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="card-body overflow-auto mx-3">

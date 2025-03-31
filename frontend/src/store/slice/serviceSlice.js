@@ -57,7 +57,7 @@ export const addService = createAsyncThunk(
     try {
       const authToken = localStorage.getItem("authToken");
       const response = await axios.post(
-        `${API_BASE_URL}/category/${categoryId}/services`,
+        `${API_BASE_URL}/category/${categoryId}/service`,
         serviceData,
         {
           headers: {
@@ -84,7 +84,7 @@ export const updateService = createAsyncThunk(
     try {
       const authToken = localStorage.getItem("authToken");
       const response = await axios.put(
-        `${API_BASE_URL}/category/${categoryId}/services/${serviceId}`,
+        `${API_BASE_URL}/category/${categoryId}/service/${serviceId}`,
         serviceData,
         {
           headers: {
@@ -111,7 +111,7 @@ export const deleteService = createAsyncThunk(
     try {
       const authToken = localStorage.getItem("authToken");
       await axios.delete(
-        `${API_BASE_URL}/category/${categoryId}/services/${serviceId}`,
+        `${API_BASE_URL}/category/${categoryId}/service/${serviceId}`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
